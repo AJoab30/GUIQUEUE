@@ -1,0 +1,246 @@
+package Priority;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.PriorityQueue;
+import java.util.Iterator;
+import java.util.TreeSet;
+
+public class BusTicketingSystemGUI extends JFrame {
+    private JTextField nameField, ageField, companionField, searchField, removeField;
+    private JCheckBox disabilityCheckBox, companionCheckBox;
+    private JTextArea seatingArea;
+    private PriorityQueue<Passenger> busQueue;
+
+    private TreeSet<Integer> availableSeniorSeats, availablePWDSeats, availableRegularSeats;
+    private final int MAX_SENIOR_SEATS = 15;
+    private final int MAX_PWD_SEATS = 30;
+    private final int MAX_REGULAR_SEATS = 60;
+
+    public BusTicketingSystemGUI() {
+        busQueue = new PriorityQueue<>(new PassengerComparator());
+
+        // Initialize available seats
+        availableSeniorSeats = new TreeSet<>();
+        availablePWDSeats = new TreeSet<>();
+        availableRegularSeats = new TreeSet<>();
+
+        for (int i = 1; i <= MAX_SENIOR_SEATS; i++) {
+            availableSeniorSeats.add(i);
+        }
+        for (int i = 16; i <= MAX_PWD_SEATS; i++) {
+            availablePWDSeats.add(i);
+        }
+        for (int i = 31; i <= MAX_REGULAR_SEATS; i++) {
+            availableRegularSeats.add(i);
+        }
+
+        setTitle("Bus Ticketing System");
+        setSize(1000, 800);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new GridLayout(10, 2));
+
+        formPanel.add(new JLabel("Name:"));
+        nameField = new JTextField();
+        formPanel.add(nameField);
+
+        formPanel.add(new JLabel("Age:"));
+        ageField = new JTextField();
+        formPanel.add(ageField);
+
+        JLabel disabilityLabel = new JLabel("PWD? (Leave blank if no)");
+        formPanel.add(disabilityLabel);
+        disabilityCheckBox = new JCheckBox();
+        formPanel.add(disabilityCheckBox);
+
+        JLabel companionLabel = new JLabel("Do you have a companion? (For Seniors & PWDs only)");
+        formPanel.add(companionLabel);
+        companionCheckBox = new JCheckBox();
+        formPanel.add(companionCheckBox);
+
+        formPanel.add(new JLabel("Companion's Name:"));
+        companionField = new JTextField();
+        companionField.setEnabled(false);
+        formPanel.add(companionField);
+
+        companionCheckBox.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                companionField.setEnabled(companionCheckBox.isSelected());
+            }
+        });
+
+        JButton addPassengerButton = new JButton("Add Passenger");
+        formPanel.add(addPassengerButton);
+
+        addPassengerButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                addPassenger();
+            }
+        });
+
+        JButton showSeatingButton = new JButton("Show Seating Order");
+        formPanel.add(showSeatingButton);
+
+        showSeatingButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                displaySeatingOrder();
+            }
+        });
+
+        formPanel.add(new JLabel("Search Passenger by Name:"));
+        searchField = new JTextField();
+        formPanel.add(searchField);
+
+        JButton searchPassengerButton = new JButton("Search Passenger");
+        formPanel.add(searchPassengerButton);
+
+        searchPassengerButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                searchPassenger();
+            }
+        });
+
+        formPanel.add(new JLabel("Remove Passenger by Name:"));
+        removeField = new JTextField();
+        formPanel.add(removeField);
+
+        JButton removePassengerButton = new JButton("Remove Passenger");
+        formPanel.add(removePassengerButton);
+
+        removePassengerButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                removePassenger();
+            }
+        });
+
+        add(formPanel, BorderLayout.NORTH);
+
+        seatingArea = new JTextArea();
+        seatingArea.setEditable(false);
+        add(new JScrollPane(seatingArea), BorderLayout.CENTER);
+    }
+
+    // Method to add passenger to the queue
+    private void addPassenger() {
+        String name = nameField.getText();
+        int age = Integer.parseInt(ageField.getText());
+        boolean hasDisability = disabilityCheckBox.isSelected();
+        boolean hasCompanion = companionCheckBox.isSelected();
+        String companionName = companionField.getText();
+
+        Passenger passenger = new Passenger(name, age, hasDisability, hasCompanion, companionName);
+        passenger.seatNumber = assignSeat(passenger);
+
+        if (!passenger.seatNumber.equals("No Seat Available")) {
+            busQueue.offer(passenger);
+            JOptionPane.showMessageDialog(this, "Passenger added successfully!");
+        } else {
+            JOptionPane.showMessageDialog(this, "No seat available for the passenger.");
+        }
+
+        // Clear input fields
+        nameField.setText("");
+        ageField.setText("");
+        disabilityCheckBox.setSelected(false);
+        companionCheckBox.setSelected(false);
+        companionField.setText("");
+        companionField.setEnabled(false);
+    }
+
+    // Method to assign a seat based on passenger type
+    private String assignSeat(Passenger p) {
+        if (p.type.equals("Senior Citizen") && !availableSeniorSeats.isEmpty()) {
+            return "S" + availableSeniorSeats.pollFirst(); // Get the first available seat
+        } else if (p.type.equals("PWD") && !availablePWDSeats.isEmpty()) {
+            return "P" + availablePWDSeats.pollFirst();
+        } else if (p.type.equals("Regular Passenger") && !availableRegularSeats.isEmpty()) {
+            return "R" + availableRegularSeats.pollFirst();
+        }
+        return "No Seat Available";
+    }
+
+    // Method to search for a passenger by name
+    private void searchPassenger() {
+        String searchName = searchField.getText();
+        Iterator<Passenger> iterator = busQueue.iterator();
+        boolean found = false;
+
+        while (iterator.hasNext()) {
+            Passenger passenger = iterator.next();
+            if (passenger.name.equalsIgnoreCase(searchName)) {
+                JOptionPane.showMessageDialog(this, "Passenger Found: " + passenger);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            JOptionPane.showMessageDialog(this, "Passenger not found.");
+        }
+    }
+
+    // Method to remove a passenger by name and free the seat
+    private void removePassenger() {
+        String removeName = removeField.getText();
+        Iterator<Passenger> iterator = busQueue.iterator();
+        boolean removed = false;
+
+        while (iterator.hasNext()) {
+            Passenger passenger = iterator.next();
+            if (passenger.name.equalsIgnoreCase(removeName)) {
+                iterator.remove();
+                // Return the seat to the pool of available seats
+                if (passenger.seatNumber.startsWith("S")) {
+                    availableSeniorSeats.add(Integer.parseInt(passenger.seatNumber.substring(1)));
+                } else if (passenger.seatNumber.startsWith("P")) {
+                    availablePWDSeats.add(Integer.parseInt(passenger.seatNumber.substring(1)));
+                } else if (passenger.seatNumber.startsWith("R")) {
+                    availableRegularSeats.add(Integer.parseInt(passenger.seatNumber.substring(1)));
+                }
+                removed = true;
+                break;
+            }
+        }
+
+        if (removed) {
+            JOptionPane.showMessageDialog(this, "Passenger removed successfully.");
+            displaySeatingOrder(); // Update seating display
+        } else {
+            JOptionPane.showMessageDialog(this, "Passenger not found.");
+        }
+    }
+
+    // Method to display the seating order and available seats
+    private void displaySeatingOrder() {
+        seatingArea.setText(""); // Clear previous seating order
+        PriorityQueue<Passenger> tempQueue = new PriorityQueue<>(busQueue);
+
+        seatingArea.append("Available Seats:\n");
+        seatingArea.append("Senior Citizen Seats: " + availableSeniorSeats.size() + "\n");
+        seatingArea.append("PWD Seats: " + availablePWDSeats.size() + "\n");
+        seatingArea.append("Regular Seats: " + availableRegularSeats.size() + "\n\n");
+
+        seatingArea.append("Current Seating Order:\n");
+
+        while (!tempQueue.isEmpty()) {
+            Passenger p = tempQueue.poll();
+            seatingArea.append(p.seatNumber + ": " + p + "\n");
+
+            if (p.hasCompanion) {
+                seatingArea.append(" (Companion: " + p.companionName + ")\n");
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            BusTicketingSystemGUI app = new BusTicketingSystemGUI();
+            app.setVisible(true);
+        });
+    }
+}
